@@ -1,0 +1,114 @@
+{
+	"$comment": "Generated fixtures. See ../../docs/signing.md for the algorithm. Regenerate with tools/generate-hmac-vectors.py.",
+	"algorithm": "HMAC-SHA256",
+	"encoding": "lowercase hex",
+	"signed_string": "{timestamp}.{raw request body}",
+	"skew_tolerance_seconds": 300,
+	"headers": {
+		"schema": "X-Monitoring-Schema",
+		"timestamp": "X-Monitoring-Timestamp",
+		"signature": "X-Monitoring-Signature",
+		"prober": "X-Monitoring-Prober",
+		"tenant": "X-Monitoring-Tenant"
+	},
+	"signature_header_format": "v1=<hex>",
+	"positive": [
+		{
+			"name": "results-delivery",
+			"description": "A prober -> hub results delivery. The signed string is '{timestamp}.{raw body}'.",
+			"secret": "whsec_4b1g4h_pr0b3r_s3cr3t_do_not_use_in_production",
+			"timestamp": 1788660000,
+			"body": "{\"schema\":1,\"prober\":{\"id\":\"cf-prober-1\",\"location\":\"cloudflare\"},\"results\":[{\"check_id\":\"01M1RXX0NRM9S346Q3D25VT4F5\",\"monitor_id\":\"20\",\"checked_at\":\"2026-09-05T14:00:03Z\",\"up\":true,\"response_time_ms\":214,\"status_code\":200,\"failure_reason\":null,\"served_from_cache\":false},{\"check_id\":\"01M1RY64NG6CQ643DZVMXXQKFB\",\"monitor_id\":\"20\",\"checked_at\":\"2026-09-05T14:05:02Z\",\"up\":false,\"response_time_ms\":null,\"status_code\":null,\"failure_reason\":\"Connection timed out after 30000 ms\",\"served_from_cache\":false},{\"check_id\":\"01M1RY64NGV37E3S3E28JT97KB\",\"monitor_id\":\"21\",\"checked_at\":\"2026-09-05T14:05:02Z\",\"up\":true,\"response_time_ms\":38,\"status_code\":200,\"failure_reason\":null,\"served_from_cache\":true}],\"dropped\":[{\"monitor_id\":\"11\",\"count\":3,\"oldest\":\"2026-09-04T02:00:00Z\",\"newest\":\"2026-09-04T04:00:00Z\"}],\"clamped\":[{\"monitor_id\":\"10\",\"requested_interval_minutes\":5,\"effective_interval_minutes\":60,\"reason\":\"hibernating-site\"}],\"usage\":{\"month\":\"2026-09\",\"checks\":14320,\"pings\":486}}",
+			"signature": "a6564e2a7ddb77c30f4daf07460ff69bb233d0372bfab0cafc96f00896664d69",
+			"verifies": true
+		},
+		{
+			"name": "empty-body",
+			"description": "A change notice: POST {prober}/tenants/{tenant}/changed carries no body. The signed string is the timestamp, a dot, and nothing.",
+			"secret": "whsec_4b1g4h_pr0b3r_s3cr3t_do_not_use_in_production",
+			"timestamp": 1788660000,
+			"body": "",
+			"signature": "a52e647851ae1b976642998fbc1d9dbd39768cd9d54bad3fc97be2802eeda621",
+			"verifies": true
+		},
+		{
+			"name": "unicode-body",
+			"description": "A body containing multi-byte UTF-8. Implementations must sign the UTF-8 bytes, not a decoded or escaped form.",
+			"secret": "whsec_4b1g4h_pr0b3r_s3cr3t_do_not_use_in_production",
+			"timestamp": 1788660000,
+			"body": "{\"schema\":1,\"message\":\"Le café est tombé — éèê 中文 🚀\"}",
+			"signature": "dafed23b57ae0cf2a19f67db7673d207b98370df9988aeaf42d3f3cb6a92fb15",
+			"verifies": true
+		},
+		{
+			"name": "previous-secret",
+			"description": "The same body signed with a tenant's previous secret. During rotation the verifier accepts a match against any configured secret, so this must verify too.",
+			"secret": "whsec_4b1g4h_pr3v10us_s3cr3t_do_not_use_in_production",
+			"timestamp": 1788660000,
+			"body": "{\"schema\":1,\"prober\":{\"id\":\"cf-prober-1\",\"location\":\"cloudflare\"},\"results\":[{\"check_id\":\"01M1RXX0NRM9S346Q3D25VT4F5\",\"monitor_id\":\"20\",\"checked_at\":\"2026-09-05T14:00:03Z\",\"up\":true,\"response_time_ms\":214,\"status_code\":200,\"failure_reason\":null,\"served_from_cache\":false},{\"check_id\":\"01M1RY64NG6CQ643DZVMXXQKFB\",\"monitor_id\":\"20\",\"checked_at\":\"2026-09-05T14:05:02Z\",\"up\":false,\"response_time_ms\":null,\"status_code\":null,\"failure_reason\":\"Connection timed out after 30000 ms\",\"served_from_cache\":false},{\"check_id\":\"01M1RY64NGV37E3S3E28JT97KB\",\"monitor_id\":\"21\",\"checked_at\":\"2026-09-05T14:05:02Z\",\"up\":true,\"response_time_ms\":38,\"status_code\":200,\"failure_reason\":null,\"served_from_cache\":true}],\"dropped\":[{\"monitor_id\":\"11\",\"count\":3,\"oldest\":\"2026-09-04T02:00:00Z\",\"newest\":\"2026-09-04T04:00:00Z\"}],\"clamped\":[{\"monitor_id\":\"10\",\"requested_interval_minutes\":5,\"effective_interval_minutes\":60,\"reason\":\"hibernating-site\"}],\"usage\":{\"month\":\"2026-09\",\"checks\":14320,\"pings\":486}}",
+			"signature": "06f7929208978fd35059770d3b94b1e3d0935c9e947db9ca3ef8ed7d26c7f4bd",
+			"verifies": true
+		},
+		{
+			"name": "manifest-response",
+			"description": "A hub -> prober manifest response. The direction does not change the algorithm; only which side holds which secret.",
+			"secret": "whsec_4b1g4h_pr0b3r_s3cr3t_do_not_use_in_production",
+			"timestamp": 1788660000,
+			"body": "{\"schema\":1,\"tenant\":\"abigah\",\"generated_at\":\"2026-09-05T14:00:00Z\",\"sites\":[{\"id\":\"1\",\"name\":\"Abigah\",\"hibernates\":true,\"ingest_token\":\"s1te-1ngest-4bigah-Ex4mpl3\",\"monitors\":[{\"id\":\"10\",\"url\":\"https://abigah.example/\",\"method\":\"GET\",\"headers\":{},\"payload\":null,\"look_for_string\":\"Abigah\",\"fail_for_string\":null,\"interval_minutes\":60,\"critical\":true,\"enabled\":true},{\"id\":\"11\",\"url\":\"https://abigah.example/up\",\"method\":\"GET\",\"headers\":{\"Cache-Control\":\"no-cache\"},\"payload\":null,\"look_for_string\":null,\"fail_for_string\":null,\"interval_minutes\":60,\"critical\":true,\"enabled\":true}],\"heartbeats\":[{\"id\":\"100\",\"kind\":\"heartbeat\",\"token\":\"hb-4bigah-h0urly-d1gest-01\",\"interval_minutes\":60,\"grace_minutes\":10},{\"id\":\"101\",\"kind\":\"event\",\"token\":\"ev-4bigah-depl0yment-01\",\"timeout_minutes\":20}]},{\"id\":\"2\",\"name\":\"Marketing site\",\"hibernates\":false,\"ingest_token\":\"s1te-1ngest-mrkt1ng-Ex4mpl3\",\"monitors\":[{\"id\":\"20\",\"url\":\"https://marketing.example/\",\"method\":\"GET\",\"headers\":{},\"payload\":null,\"look_for_string\":null,\"fail_for_string\":\"Service Unavailable\",\"interval_minutes\":5,\"critical\":true,\"enabled\":true},{\"id\":\"21\",\"url\":\"https://marketing.example/blog\",\"method\":\"HEAD\",\"headers\":{},\"payload\":null,\"look_for_string\":null,\"fail_for_string\":null,\"interval_minutes\":15,\"critical\":false,\"enabled\":true}],\"heartbeats\":[]}]}",
+			"signature": "2901144bf06f2a0529f6c7daf39876e0e6e336478a5f4ff80c04d7c9de3b2da5",
+			"verifies": true
+		},
+		{
+			"name": "ping-body",
+			"description": "A site -> prober ping. Pings authenticate by the token in the path, not by HMAC, but a client that signs anyway must produce this.",
+			"secret": "whsec_4b1g4h_pr0b3r_s3cr3t_do_not_use_in_production",
+			"timestamp": 1788660000,
+			"body": "{\"message\":\"Nightly digest sent to 412 recipients\",\"duration_ms\":8410}",
+			"signature": "41f3e9f0a40cb549b99990362875c79d457869f7043d839ac37f975b7da42489",
+			"verifies": true
+		}
+	],
+	"negative": [
+		{
+			"name": "wrong-secret",
+			"description": "Correct body and timestamp, signed with a secret the verifier does not hold. Must be rejected.",
+			"secret": "whsec_not_a_configured_secret",
+			"timestamp": 1788660000,
+			"body": "{\"schema\":1,\"prober\":{\"id\":\"cf-prober-1\",\"location\":\"cloudflare\"},\"results\":[{\"check_id\":\"01M1RXX0NRM9S346Q3D25VT4F5\",\"monitor_id\":\"20\",\"checked_at\":\"2026-09-05T14:00:03Z\",\"up\":true,\"response_time_ms\":214,\"status_code\":200,\"failure_reason\":null,\"served_from_cache\":false},{\"check_id\":\"01M1RY64NG6CQ643DZVMXXQKFB\",\"monitor_id\":\"20\",\"checked_at\":\"2026-09-05T14:05:02Z\",\"up\":false,\"response_time_ms\":null,\"status_code\":null,\"failure_reason\":\"Connection timed out after 30000 ms\",\"served_from_cache\":false},{\"check_id\":\"01M1RY64NGV37E3S3E28JT97KB\",\"monitor_id\":\"21\",\"checked_at\":\"2026-09-05T14:05:02Z\",\"up\":true,\"response_time_ms\":38,\"status_code\":200,\"failure_reason\":null,\"served_from_cache\":true}],\"dropped\":[{\"monitor_id\":\"11\",\"count\":3,\"oldest\":\"2026-09-04T02:00:00Z\",\"newest\":\"2026-09-04T04:00:00Z\"}],\"clamped\":[{\"monitor_id\":\"10\",\"requested_interval_minutes\":5,\"effective_interval_minutes\":60,\"reason\":\"hibernating-site\"}],\"usage\":{\"month\":\"2026-09\",\"checks\":14320,\"pings\":486}}",
+			"signature": "a6564e2a7ddb77c30f4daf07460ff69bb233d0372bfab0cafc96f00896664d69",
+			"verifies": false,
+			"reason": "signature was produced with a different secret"
+		},
+		{
+			"name": "tampered-body",
+			"description": "A signature lifted from a valid delivery and replayed with one byte of the body changed. Must be rejected.",
+			"secret": "whsec_4b1g4h_pr0b3r_s3cr3t_do_not_use_in_production",
+			"timestamp": 1788660000,
+			"body": "{\"schema\":1,\"prober\":{\"id\":\"cf-prober-1\",\"location\":\"cloudflare\"},\"results\":[{\"check_id\":\"01M1RXX0NRM9S346Q3D25VT4F5\",\"monitor_id\":\"20\",\"checked_at\":\"2026-09-05T14:00:03Z\",\"up\":false,\"response_time_ms\":214,\"status_code\":200,\"failure_reason\":null,\"served_from_cache\":false},{\"check_id\":\"01M1RY64NG6CQ643DZVMXXQKFB\",\"monitor_id\":\"20\",\"checked_at\":\"2026-09-05T14:05:02Z\",\"up\":false,\"response_time_ms\":null,\"status_code\":null,\"failure_reason\":\"Connection timed out after 30000 ms\",\"served_from_cache\":false},{\"check_id\":\"01M1RY64NGV37E3S3E28JT97KB\",\"monitor_id\":\"21\",\"checked_at\":\"2026-09-05T14:05:02Z\",\"up\":true,\"response_time_ms\":38,\"status_code\":200,\"failure_reason\":null,\"served_from_cache\":true}],\"dropped\":[{\"monitor_id\":\"11\",\"count\":3,\"oldest\":\"2026-09-04T02:00:00Z\",\"newest\":\"2026-09-04T04:00:00Z\"}],\"clamped\":[{\"monitor_id\":\"10\",\"requested_interval_minutes\":5,\"effective_interval_minutes\":60,\"reason\":\"hibernating-site\"}],\"usage\":{\"month\":\"2026-09\",\"checks\":14320,\"pings\":486}}",
+			"signature": "a6564e2a7ddb77c30f4daf07460ff69bb233d0372bfab0cafc96f00896664d69",
+			"verifies": false,
+			"reason": "body does not match the signed body"
+		},
+		{
+			"name": "timestamp-shifted",
+			"description": "A valid signature presented with a different timestamp header. The timestamp is inside the signed string, so this cannot verify.",
+			"secret": "whsec_4b1g4h_pr0b3r_s3cr3t_do_not_use_in_production",
+			"timestamp": 1788660060,
+			"body": "{\"schema\":1,\"prober\":{\"id\":\"cf-prober-1\",\"location\":\"cloudflare\"},\"results\":[{\"check_id\":\"01M1RXX0NRM9S346Q3D25VT4F5\",\"monitor_id\":\"20\",\"checked_at\":\"2026-09-05T14:00:03Z\",\"up\":true,\"response_time_ms\":214,\"status_code\":200,\"failure_reason\":null,\"served_from_cache\":false},{\"check_id\":\"01M1RY64NG6CQ643DZVMXXQKFB\",\"monitor_id\":\"20\",\"checked_at\":\"2026-09-05T14:05:02Z\",\"up\":false,\"response_time_ms\":null,\"status_code\":null,\"failure_reason\":\"Connection timed out after 30000 ms\",\"served_from_cache\":false},{\"check_id\":\"01M1RY64NGV37E3S3E28JT97KB\",\"monitor_id\":\"21\",\"checked_at\":\"2026-09-05T14:05:02Z\",\"up\":true,\"response_time_ms\":38,\"status_code\":200,\"failure_reason\":null,\"served_from_cache\":true}],\"dropped\":[{\"monitor_id\":\"11\",\"count\":3,\"oldest\":\"2026-09-04T02:00:00Z\",\"newest\":\"2026-09-04T04:00:00Z\"}],\"clamped\":[{\"monitor_id\":\"10\",\"requested_interval_minutes\":5,\"effective_interval_minutes\":60,\"reason\":\"hibernating-site\"}],\"usage\":{\"month\":\"2026-09\",\"checks\":14320,\"pings\":486}}",
+			"signature": "a6564e2a7ddb77c30f4daf07460ff69bb233d0372bfab0cafc96f00896664d69",
+			"verifies": false,
+			"reason": "timestamp is part of the signed string"
+		},
+		{
+			"name": "skew-exceeded",
+			"description": "A correctly signed request whose timestamp is 6 minutes old. The signature verifies but the request must still be refused, because tolerance is +/- 300 seconds.",
+			"secret": "whsec_4b1g4h_pr0b3r_s3cr3t_do_not_use_in_production",
+			"timestamp": 1788660000,
+			"body": "{\"schema\":1,\"prober\":{\"id\":\"cf-prober-1\",\"location\":\"cloudflare\"},\"results\":[{\"check_id\":\"01M1RXX0NRM9S346Q3D25VT4F5\",\"monitor_id\":\"20\",\"checked_at\":\"2026-09-05T14:00:03Z\",\"up\":true,\"response_time_ms\":214,\"status_code\":200,\"failure_reason\":null,\"served_from_cache\":false},{\"check_id\":\"01M1RY64NG6CQ643DZVMXXQKFB\",\"monitor_id\":\"20\",\"checked_at\":\"2026-09-05T14:05:02Z\",\"up\":false,\"response_time_ms\":null,\"status_code\":null,\"failure_reason\":\"Connection timed out after 30000 ms\",\"served_from_cache\":false},{\"check_id\":\"01M1RY64NGV37E3S3E28JT97KB\",\"monitor_id\":\"21\",\"checked_at\":\"2026-09-05T14:05:02Z\",\"up\":true,\"response_time_ms\":38,\"status_code\":200,\"failure_reason\":null,\"served_from_cache\":true}],\"dropped\":[{\"monitor_id\":\"11\",\"count\":3,\"oldest\":\"2026-09-04T02:00:00Z\",\"newest\":\"2026-09-04T04:00:00Z\"}],\"clamped\":[{\"monitor_id\":\"10\",\"requested_interval_minutes\":5,\"effective_interval_minutes\":60,\"reason\":\"hibernating-site\"}],\"usage\":{\"month\":\"2026-09\",\"checks\":14320,\"pings\":486}}",
+			"signature": "a6564e2a7ddb77c30f4daf07460ff69bb233d0372bfab0cafc96f00896664d69",
+			"verifies": false,
+			"reason": "outside the +/- 300 second skew window",
+			"verifier_now": 1788660360
+		}
+	]
+}

@@ -1,0 +1,94 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://bot-cop.dev/traffic/v1/exceptions.schema.json",
+	"title": "Exception delivery",
+	"description": "Request body of POST {extranet}/monitoring/exceptions. Server-error fingerprints the prober received from sites and judged deliverable under the site rule. A new fingerprint is delivered immediately; repeats ride the next batch as counts.",
+	"type": "object",
+	"required": ["schema", "prober", "exceptions"],
+	"additionalProperties": false,
+	"properties": {
+		"schema": { "const": 1 },
+		"prober": { "$ref": "#/$defs/prober" },
+		"exceptions": { "type": "array", "items": { "$ref": "#/$defs/exception" } },
+		"suppressed": {
+			"description": "Fingerprints seen while the site was down. A 500 storm during an outage is the outage; the hub attaches these to the open incident instead of raising exception_reported.",
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["site_id", "fingerprint", "since", "count"],
+				"additionalProperties": false,
+				"properties": {
+					"site_id": { "$ref": "#/$defs/id" },
+					"fingerprint": { "$ref": "#/$defs/fingerprint" },
+					"since": { "$ref": "#/$defs/timestamp" },
+					"count": { "type": "integer", "minimum": 1 }
+				}
+			},
+			"default": []
+		},
+		"dropped": {
+			"description": "Fingerprints evicted from a full per-site buffer, reported as a count rather than lost silently.",
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["site_id", "count"],
+				"additionalProperties": false,
+				"properties": {
+					"site_id": { "$ref": "#/$defs/id" },
+					"count": { "type": "integer", "minimum": 1 }
+				}
+			},
+			"default": []
+		}
+	},
+	"$defs": {
+		"id": { "type": "string", "minLength": 1, "maxLength": 64 },
+		"fingerprint": {
+			"description": "Hash of class + file + line, computed by the client. Stable across occurrences; resolving it on the hub, or a deploy finishing, resets it so a recurrence after a fix counts as new.",
+			"type": "string",
+			"pattern": "^[a-f0-9]{64}$"
+		},
+		"timestamp": {
+			"type": "string",
+			"pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$"
+		},
+		"prober": {
+			"type": "object",
+			"required": ["id", "location"],
+			"additionalProperties": false,
+			"properties": {
+				"id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$" },
+				"location": { "type": "string", "minLength": 1, "maxLength": 64 }
+			}
+		},
+		"exception": {
+			"type": "object",
+			"required": ["site_id", "fingerprint", "class", "message", "file", "line", "first_seen", "last_seen", "count", "is_new"],
+			"additionalProperties": false,
+			"properties": {
+				"site_id": { "$ref": "#/$defs/id" },
+				"fingerprint": { "$ref": "#/$defs/fingerprint" },
+				"class": { "type": "string", "minLength": 1, "maxLength": 512 },
+				"message": {
+					"description": "Scrubbed by the client (emails, tokens, SQL fragments) and truncated.",
+					"type": "string",
+					"maxLength": 2048
+				},
+				"file": { "type": "string", "maxLength": 1024 },
+				"line": { "type": "integer", "minimum": 0 },
+				"first_seen": { "$ref": "#/$defs/timestamp" },
+				"last_seen": { "$ref": "#/$defs/timestamp" },
+				"count": { "type": "integer", "minimum": 1 },
+				"is_new": {
+					"description": "First time the prober has seen this fingerprint for this site. The hub raises exception_reported on new ones and digests the rest.",
+					"type": "boolean"
+				},
+				"trace": {
+					"description": "Opt-in on the client. Trimmed.",
+					"type": ["string", "null"],
+					"maxLength": 8192
+				}
+			}
+		}
+	}
+}

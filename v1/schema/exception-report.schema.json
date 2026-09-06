@@ -1,0 +1,43 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://bot-cop.dev/traffic/v1/exception-report.schema.json",
+	"title": "Exception report",
+	"description": "Request body of POST {prober}/report/{token}, sent by bot-cop-traffic-client. The token in the path is the site's ingest_token from the manifest. Per-token throttled as a backstop against a runaway loop. The prober holds these in site state and judges them by the site rule before delivering to the hub.",
+	"type": "object",
+	"required": ["schema", "fingerprints"],
+	"additionalProperties": false,
+	"properties": {
+		"schema": { "const": 1 },
+		"fingerprints": {
+			"type": "array",
+			"minItems": 1,
+			"maxItems": 100,
+			"items": {
+				"type": "object",
+				"required": ["fingerprint", "class", "message", "file", "line", "first_seen", "last_seen", "count"],
+				"additionalProperties": false,
+				"properties": {
+					"fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+					"class": { "type": "string", "minLength": 1, "maxLength": 512 },
+					"message": { "type": "string", "maxLength": 2048 },
+					"file": { "type": "string", "maxLength": 1024 },
+					"line": { "type": "integer", "minimum": 0 },
+					"first_seen": { "$ref": "#/$defs/timestamp" },
+					"last_seen": { "$ref": "#/$defs/timestamp" },
+					"count": {
+						"description": "1 for the immediate send of a first occurrence; higher for a flush of repeats counted locally.",
+						"type": "integer",
+						"minimum": 1
+					},
+					"trace": { "type": ["string", "null"], "maxLength": 8192 }
+				}
+			}
+		}
+	},
+	"$defs": {
+		"timestamp": {
+			"type": "string",
+			"pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$"
+		}
+	}
+}

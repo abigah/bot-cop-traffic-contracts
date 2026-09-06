@@ -1,0 +1,226 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://bot-cop.dev/traffic/v1/manifest.schema.json",
+	"title": "Manifest",
+	"description": "Response body of GET {extranet}/monitoring/manifest. The hub's declaration of what this tenant wants checked. Pulled by the prober on boot, on a slow reconcile schedule, and after a change notice. Also serves as the prober's 'can I reach this extranet' heartbeat.",
+	"type": "object",
+	"required": [
+		"schema",
+		"tenant",
+		"generated_at",
+		"sites"
+	],
+	"additionalProperties": false,
+	"properties": {
+		"schema": {
+			"const": 1
+		},
+		"tenant": {
+			"description": "Tenant slug. Must match the key the prober has in its own tenant config.",
+			"type": "string",
+			"pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+		},
+		"generated_at": {
+			"type": "string",
+			"pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$"
+		},
+		"sites": {
+			"type": "array",
+			"items": {
+				"$ref": "#/$defs/site"
+			}
+		}
+	},
+	"$defs": {
+		"id": {
+			"description": "An id owned by the hub. Serialised as a string on the wire even when the hub stores it as an integer.",
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 64
+		},
+		"token": {
+			"description": "URL-safe secret placed in a path segment.",
+			"type": "string",
+			"pattern": "^[A-Za-z0-9_-]{16,128}$"
+		},
+		"site": {
+			"type": "object",
+			"required": [
+				"id",
+				"name",
+				"hibernates",
+				"ingest_token",
+				"monitors",
+				"heartbeats"
+			],
+			"additionalProperties": false,
+			"properties": {
+				"id": {
+					"$ref": "#/$defs/id"
+				},
+				"name": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 255
+				},
+				"hibernates": {
+					"description": "The site sleeps between requests, so every check wakes it. The prober enforces a 60-minute floor on its monitors.",
+					"type": "boolean"
+				},
+				"ingest_token": {
+					"$ref": "#/$defs/token"
+				},
+				"monitors": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/monitor"
+					}
+				},
+				"heartbeats": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/heartbeat"
+					}
+				}
+			}
+		},
+		"monitor": {
+			"type": "object",
+			"required": [
+				"id",
+				"url",
+				"method",
+				"interval_minutes",
+				"critical",
+				"enabled"
+			],
+			"additionalProperties": false,
+			"properties": {
+				"id": {
+					"$ref": "#/$defs/id"
+				},
+				"url": {
+					"type": "string",
+					"format": "uri",
+					"pattern": "^https?://"
+				},
+				"method": {
+					"enum": [
+						"GET",
+						"HEAD",
+						"POST"
+					]
+				},
+				"headers": {
+					"type": "object",
+					"additionalProperties": {
+						"type": "string"
+					},
+					"default": {}
+				},
+				"payload": {
+					"description": "Request body, sent as-is. Only meaningful for POST.",
+					"type": [
+						"string",
+						"null"
+					],
+					"default": null
+				},
+				"look_for_string": {
+					"description": "The check fails if this string is absent from the response body.",
+					"type": [
+						"string",
+						"null"
+					],
+					"default": null
+				},
+				"fail_for_string": {
+					"description": "The check fails if this string is present in the response body.",
+					"type": [
+						"string",
+						"null"
+					],
+					"default": null
+				},
+				"interval_minutes": {
+					"description": "Requested interval. The prober clamps this up to the tenant's minimum_interval_minutes, and up to 60 for a hibernating site, and reports the clamp in the next delivery.",
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 10080
+				},
+				"critical": {
+					"description": "A site is 'down' — for the heartbeat site rule and the emergency rule — when a critical monitor is down. Non-critical monitors still record checks and open their own incidents.",
+					"type": "boolean"
+				},
+				"enabled": {
+					"type": "boolean"
+				}
+			}
+		},
+		"heartbeat": {
+			"description": "A signal the site sends to the prober rather than one the prober goes and fetches. The two kinds are judged differently: a heartbeat is late when nothing arrives inside interval + grace, an event is late when a start is not followed by a finish inside timeout.",
+			"oneOf": [
+				{
+					"title": "Heartbeat",
+					"type": "object",
+					"required": [
+						"id",
+						"kind",
+						"token",
+						"interval_minutes",
+						"grace_minutes"
+					],
+					"additionalProperties": false,
+					"properties": {
+						"id": {
+							"$ref": "#/$defs/id"
+						},
+						"kind": {
+							"const": "heartbeat"
+						},
+						"token": {
+							"$ref": "#/$defs/token"
+						},
+						"interval_minutes": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 10080
+						},
+						"grace_minutes": {
+							"type": "integer",
+							"minimum": 0,
+							"maximum": 1440
+						}
+					}
+				},
+				{
+					"title": "Event",
+					"type": "object",
+					"required": [
+						"id",
+						"kind",
+						"token",
+						"timeout_minutes"
+					],
+					"additionalProperties": false,
+					"properties": {
+						"id": {
+							"$ref": "#/$defs/id"
+						},
+						"kind": {
+							"const": "event"
+						},
+						"token": {
+							"$ref": "#/$defs/token"
+						},
+						"timeout_minutes": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 10080
+						}
+					}
+				}
+			]
+		}
+	}
+}

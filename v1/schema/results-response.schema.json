@@ -1,0 +1,22 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://bot-cop.dev/traffic/v1/results-response.schema.json",
+	"title": "Results delivery response",
+	"description": "Response body of POST {extranet}/monitoring/results. Tells the prober how far its cursor may advance.",
+	"type": "object",
+	"required": ["schema", "accepted", "accepted_through"],
+	"additionalProperties": false,
+	"properties": {
+		"schema": { "const": 1 },
+		"accepted": {
+			"description": "How many results were stored. Duplicates already seen count as accepted, since the endpoint is idempotent on check_id.",
+			"type": "integer",
+			"minimum": 0
+		},
+		"accepted_through": {
+			"description": "The highest check_id accepted, or null if the delivery carried no results.",
+			"type": ["string", "null"],
+			"pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+		}
+	}
+}

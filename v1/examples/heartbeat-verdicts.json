@@ -1,0 +1,25 @@
+{
+	"schema": 1,
+	"prober": { "id": "cf-prober-1", "location": "cloudflare" },
+	"verdicts": [
+		{
+			"heartbeat_id": "100",
+			"site_id": "1",
+			"status": "missing",
+			"observed_at": "2026-09-05T15:10:00Z",
+			"last_ping_at": "2026-09-05T13:58:41Z",
+			"message": null
+		},
+		{
+			"heartbeat_id": "101",
+			"site_id": "1",
+			"status": "timed_out",
+			"observed_at": "2026-09-05T15:10:00Z",
+			"last_ping_at": "2026-09-05T14:48:00Z",
+			"message": "Deployment started at 14:48 never reported finish"
+		}
+	],
+	"suppressed": [
+		{ "heartbeat_id": "200", "site_id": "2", "since": "2026-09-05T14:05:02Z" }
+	]
+}

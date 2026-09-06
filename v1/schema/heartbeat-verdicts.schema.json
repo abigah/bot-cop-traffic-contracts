@@ -1,0 +1,63 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://bot-cop.dev/traffic/v1/heartbeat-verdicts.schema.json",
+	"title": "Heartbeat verdicts",
+	"description": "Request body of POST {extranet}/monitoring/heartbeats. Verdicts the prober's sweep reached about heartbeats and events, after applying the site rule in fixtures/heartbeat-site-rule.json. The hub maps these onto its own events and routes them through the same subscriber as uptime events, so mutes and channel preferences apply.",
+	"type": "object",
+	"required": ["schema", "prober", "verdicts"],
+	"additionalProperties": false,
+	"properties": {
+		"schema": { "const": 1 },
+		"prober": { "$ref": "#/$defs/prober" },
+		"verdicts": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["heartbeat_id", "site_id", "status", "observed_at"],
+				"additionalProperties": false,
+				"properties": {
+					"heartbeat_id": { "$ref": "#/$defs/id" },
+					"site_id": { "$ref": "#/$defs/id" },
+					"status": {
+						"description": "missing: no ping within interval + grace. failed: an explicit /fail ping. timed_out: a /start with no finish inside timeout. recovered: pinged again after any of the above.",
+						"enum": ["missing", "failed", "timed_out", "recovered"]
+					},
+					"observed_at": { "$ref": "#/$defs/timestamp" },
+					"last_ping_at": { "anyOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] },
+					"message": { "type": ["string", "null"], "maxLength": 1024 }
+				}
+			}
+		},
+		"suppressed": {
+			"description": "Heartbeats that went missing while the site was down. Not verdicts: the hub attaches these to the site's open incident as context, and raises nothing of its own.",
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["heartbeat_id", "site_id", "since"],
+				"additionalProperties": false,
+				"properties": {
+					"heartbeat_id": { "$ref": "#/$defs/id" },
+					"site_id": { "$ref": "#/$defs/id" },
+					"since": { "$ref": "#/$defs/timestamp" }
+				}
+			},
+			"default": []
+		}
+	},
+	"$defs": {
+		"id": { "type": "string", "minLength": 1, "maxLength": 64 },
+		"timestamp": {
+			"type": "string",
+			"pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$"
+		},
+		"prober": {
+			"type": "object",
+			"required": ["id", "location"],
+			"additionalProperties": false,
+			"properties": {
+				"id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$" },
+				"location": { "type": "string", "minLength": 1, "maxLength": 64 }
+			}
+		}
+	}
+}

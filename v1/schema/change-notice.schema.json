@@ -1,0 +1,9 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://bot-cop.dev/traffic/v1/change-notice.schema.json",
+	"title": "Change notice",
+	"description": "Request body of POST {prober}/tenants/{tenant}/changed, sent by a model observer on the hub when a monitor or heartbeat declaration changes. The body is empty; the notice carries no information beyond 'pull again'. The prober schedules a manifest pull in response. The slow reconcile pull makes this a fast path, not a correctness requirement — a lost notice costs freshness, never correctness.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {}
+}

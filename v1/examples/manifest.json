@@ -1,0 +1,87 @@
+{
+	"schema": 1,
+	"tenant": "abigah",
+	"generated_at": "2026-09-05T14:00:00Z",
+	"sites": [
+		{
+			"id": "1",
+			"name": "Abigah",
+			"hibernates": true,
+			"ingest_token": "s1te-1ngest-4bigah-Ex4mpl3",
+			"monitors": [
+				{
+					"id": "10",
+					"url": "https://abigah.example/",
+					"method": "GET",
+					"headers": {},
+					"payload": null,
+					"look_for_string": "Abigah",
+					"fail_for_string": null,
+					"interval_minutes": 60,
+					"critical": true,
+					"enabled": true
+				},
+				{
+					"id": "11",
+					"url": "https://abigah.example/up",
+					"method": "GET",
+					"headers": { "Cache-Control": "no-cache" },
+					"payload": null,
+					"look_for_string": null,
+					"fail_for_string": null,
+					"interval_minutes": 60,
+					"critical": true,
+					"enabled": true
+				}
+			],
+			"heartbeats": [
+				{
+					"id": "100",
+					"kind": "heartbeat",
+					"token": "hb-4bigah-h0urly-d1gest-01",
+					"interval_minutes": 60,
+					"grace_minutes": 10
+				},
+				{
+					"id": "101",
+					"kind": "event",
+					"token": "ev-4bigah-depl0yment-01",
+					"timeout_minutes": 20
+				}
+			]
+		},
+		{
+			"id": "2",
+			"name": "Marketing site",
+			"hibernates": false,
+			"ingest_token": "s1te-1ngest-mrkt1ng-Ex4mpl3",
+			"monitors": [
+				{
+					"id": "20",
+					"url": "https://marketing.example/",
+					"method": "GET",
+					"headers": {},
+					"payload": null,
+					"look_for_string": null,
+					"fail_for_string": "Service Unavailable",
+					"interval_minutes": 5,
+					"critical": true,
+					"enabled": true
+				},
+				{
+					"id": "21",
+					"url": "https://marketing.example/blog",
+					"method": "HEAD",
+					"headers": {},
+					"payload": null,
+					"look_for_string": null,
+					"fail_for_string": null,
+					"interval_minutes": 15,
+					"critical": false,
+					"enabled": true
+				}
+			],
+			"heartbeats": []
+		}
+	]
+}

@@ -1,0 +1,53 @@
+{
+	"schema": 1,
+	"prober": { "id": "cf-prober-1", "location": "cloudflare" },
+	"results": [
+		{
+			"check_id": "01M1RXX0NRM9S346Q3D25VT4F5",
+			"monitor_id": "20",
+			"checked_at": "2026-09-05T14:00:03Z",
+			"up": true,
+			"response_time_ms": 214,
+			"status_code": 200,
+			"failure_reason": null,
+			"served_from_cache": false
+		},
+		{
+			"check_id": "01M1RY64NG6CQ643DZVMXXQKFB",
+			"monitor_id": "20",
+			"checked_at": "2026-09-05T14:05:02Z",
+			"up": false,
+			"response_time_ms": null,
+			"status_code": null,
+			"failure_reason": "Connection timed out after 30000 ms",
+			"served_from_cache": false
+		},
+		{
+			"check_id": "01M1RY64NGV37E3S3E28JT97KB",
+			"monitor_id": "21",
+			"checked_at": "2026-09-05T14:05:02Z",
+			"up": true,
+			"response_time_ms": 38,
+			"status_code": 200,
+			"failure_reason": null,
+			"served_from_cache": true
+		}
+	],
+	"dropped": [
+		{
+			"monitor_id": "11",
+			"count": 3,
+			"oldest": "2026-09-04T02:00:00Z",
+			"newest": "2026-09-04T04:00:00Z"
+		}
+	],
+	"clamped": [
+		{
+			"monitor_id": "10",
+			"requested_interval_minutes": 5,
+			"effective_interval_minutes": 60,
+			"reason": "hibernating-site"
+		}
+	],
+	"usage": { "month": "2026-09", "checks": 14320, "pings": 486 }
+}

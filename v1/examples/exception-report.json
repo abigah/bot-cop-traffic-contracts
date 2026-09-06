@@ -1,0 +1,16 @@
+{
+	"schema": 1,
+	"fingerprints": [
+		{
+			"fingerprint": "3d2f1a9c8b7e6d5c4b3a29180f7e6d5c4b3a29180f7e6d5c4b3a29180f7e6d5c",
+			"class": "Illuminate\\Database\\QueryException",
+			"message": "SQLSTATE[HY000] [2002] Connection refused",
+			"file": "app/Http/Controllers/OrderController.php",
+			"line": 84,
+			"first_seen": "2026-09-05T15:02:11Z",
+			"last_seen": "2026-09-05T15:02:11Z",
+			"count": 1,
+			"trace": null
+		}
+	]
+}

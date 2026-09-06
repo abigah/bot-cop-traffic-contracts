@@ -1,0 +1,16 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://bot-cop.dev/traffic/v1/ping.schema.json",
+	"title": "Ping body",
+	"description": "Optional body of GET|POST {prober}/ping/{token}[/start|/fail]. The token in the path is the credential; the body is optional context passed through into the resulting verdict. Pings are fire-and-forget from site code with a short timeout and must never throw, so the prober answers 200 immediately after one state write. An absent or unparseable body is not an error — the ping still counts.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"message": { "type": "string", "maxLength": 1024 },
+		"duration_ms": {
+			"description": "How long the job or deploy took, for a finish or fail ping.",
+			"type": "integer",
+			"minimum": 0
+		}
+	}
+}

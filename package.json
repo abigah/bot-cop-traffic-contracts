@@ -1,0 +1,13 @@
+{
+	"name": "bot-cop-traffic-contracts",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Schemas, example payloads, HMAC vectors and rule fixtures for Bot Cop Traffic Division. The conformance kit both the TypeScript and PHP implementations test against.",
+	"scripts": {
+		"test": "node tools/validate.mjs"
+	},
+	"devDependencies": {
+		"ajv": "^8.17.1",
+		"ajv-formats": "^3.0.1"
+	}
+}

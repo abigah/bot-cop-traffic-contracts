@@ -1,0 +1,104 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://bot-cop.dev/traffic/v1/results.schema.json",
+	"title": "Results delivery",
+	"description": "Request body of POST {extranet}/monitoring/results. Raw check results, delivered on the cadence in fixtures/delivery-cadence.json. Idempotent on check_id. The hub replays these in checked_at order through its own state machine; the prober draws no conclusions about alerting.",
+	"type": "object",
+	"required": ["schema", "prober", "results"],
+	"additionalProperties": false,
+	"properties": {
+		"schema": { "const": 1 },
+		"prober": { "$ref": "#/$defs/prober" },
+		"results": { "type": "array", "items": { "$ref": "#/$defs/result" } },
+		"dropped": {
+			"description": "Results lost to buffer overflow. The prober is never a history store; when a buffer fills, the oldest go and are reported here.",
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["monitor_id", "count", "oldest", "newest"],
+				"additionalProperties": false,
+				"properties": {
+					"monitor_id": { "$ref": "#/$defs/id" },
+					"count": { "type": "integer", "minimum": 1 },
+					"oldest": { "$ref": "#/$defs/timestamp" },
+					"newest": { "$ref": "#/$defs/timestamp" }
+				}
+			},
+			"default": []
+		},
+		"clamped": {
+			"description": "Monitors whose requested interval was raised to the tenant minimum, or to 60 minutes for a hibernating site. Reported so the hub can show the effective interval rather than the requested one.",
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["monitor_id", "requested_interval_minutes", "effective_interval_minutes", "reason"],
+				"additionalProperties": false,
+				"properties": {
+					"monitor_id": { "$ref": "#/$defs/id" },
+					"requested_interval_minutes": { "type": "integer", "minimum": 1 },
+					"effective_interval_minutes": { "type": "integer", "minimum": 1 },
+					"reason": { "enum": ["tenant-minimum", "hibernating-site"] }
+				}
+			},
+			"default": []
+		},
+		"usage": {
+			"description": "Month-to-date counters, so the hub holds a durable copy of what the prober did for this tenant.",
+			"type": "object",
+			"required": ["month", "checks", "pings"],
+			"additionalProperties": false,
+			"properties": {
+				"month": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+				"checks": { "type": "integer", "minimum": 0 },
+				"pings": { "type": "integer", "minimum": 0 }
+			}
+		}
+	},
+	"$defs": {
+		"id": { "type": "string", "minLength": 1, "maxLength": 64 },
+		"timestamp": {
+			"type": "string",
+			"pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$"
+		},
+		"prober": {
+			"type": "object",
+			"required": ["id", "location"],
+			"additionalProperties": false,
+			"properties": {
+				"id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$" },
+				"location": {
+					"description": "A label the hub stores and displays. Nothing on the hub infers anything from it.",
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 64
+				}
+			}
+		},
+		"result": {
+			"type": "object",
+			"required": ["check_id", "monitor_id", "checked_at", "up"],
+			"additionalProperties": false,
+			"properties": {
+				"check_id": {
+					"description": "ULID, Crockford base32, uppercase. The hub's idempotency key; it returns the highest one it accepted so the prober can advance its cursor.",
+					"type": "string",
+					"pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+				},
+				"monitor_id": { "$ref": "#/$defs/id" },
+				"checked_at": { "$ref": "#/$defs/timestamp" },
+				"up": {
+					"description": "Whether the check passed. Replayed straight into the hub's recordUptimeResult().",
+					"type": "boolean"
+				},
+				"response_time_ms": { "type": ["integer", "null"], "minimum": 0 },
+				"status_code": { "type": ["integer", "null"], "minimum": 100, "maximum": 599 },
+				"failure_reason": { "type": ["string", "null"], "maxLength": 1024 },
+				"served_from_cache": {
+					"description": "The response carried cf-cache-status: HIT or a non-zero Age, so it never reached the origin. A distinct condition from up or down: the hub should flag the misconfiguration rather than trust the result either way.",
+					"type": "boolean",
+					"default": false
+				}
+			}
+		}
+	}
+}

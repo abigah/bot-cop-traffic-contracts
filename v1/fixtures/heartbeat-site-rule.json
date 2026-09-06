@@ -1,0 +1,138 @@
+{
+	"$comment": "Cases for the heartbeat site rule (design §4). When a heartbeat, event or exception verdict is due, the prober first asks whether the site itself is up: a missed job during an outage is the outage, not a second page. Note the probe branch — if the site's critical monitors were last seen up, or their last result is stale, the prober spends one extra request to find out before judging. That request is only made in the case that actually matters.",
+	"function": "judge(signal, site, now) -> { action, verdict_status }",
+	"input": {
+		"now": "the moment the sweep runs",
+		"signal": {
+			"kind": "heartbeat or event",
+			"state": "overdue, explicit_fail, start_without_finish, or pinged_again",
+			"last_ping_at": "when this heartbeat last pinged, or null",
+			"interval_minutes": "expected ping interval (heartbeat only)",
+			"grace_minutes": "slack before overdue (heartbeat only)",
+			"timeout_minutes": "how long a start may go unfinished (event only)"
+		},
+		"site": {
+			"critical_status": "the last known status of the site's critical monitors: up, down, or stale",
+			"critical_checked_at": "when that status was established",
+			"down_since": "when the site's critical monitors first failed, or null",
+			"recovered_at": "when they last came back, or null"
+		},
+		"extranet_reachable": "whether the prober can currently reach this tenant's hub"
+	},
+	"actions": {
+		"probe-then-judge": "check the site's critical monitors now, then re-enter this function with the fresh status",
+		"deliver": "send the verdict in the next heartbeat delivery",
+		"suppress": "no verdict; report it in the suppressed[] list so the hub attaches it to the open incident",
+		"hold": "reach no conclusion yet; re-evaluate on a later sweep"
+	},
+	"cases": [
+		{
+			"name": "overdue, site last seen up",
+			"note": "Last seen up is not good enough to page on. The prober confirms with a live probe first, because the likeliest reason a job stopped pinging is that the whole site went down a moment ago.",
+			"given": {
+				"now": "2026-09-05T15:10:00Z",
+				"signal": { "kind": "heartbeat", "state": "overdue", "last_ping_at": "2026-09-05T13:58:41Z", "interval_minutes": 60, "grace_minutes": 10 },
+				"site": { "critical_status": "up", "critical_checked_at": "2026-09-05T15:05:00Z", "down_since": null, "recovered_at": null },
+				"extranet_reachable": true
+			},
+			"expect": { "action": "probe-then-judge" }
+		},
+		{
+			"name": "overdue, site status stale",
+			"given": {
+				"now": "2026-09-05T15:10:00Z",
+				"signal": { "kind": "heartbeat", "state": "overdue", "last_ping_at": "2026-09-05T13:58:41Z", "interval_minutes": 60, "grace_minutes": 10 },
+				"site": { "critical_status": "stale", "critical_checked_at": "2026-09-05T13:00:00Z", "down_since": null, "recovered_at": null },
+				"extranet_reachable": true
+			},
+			"expect": { "action": "probe-then-judge" }
+		},
+		{
+			"name": "overdue, probe confirmed the site is up",
+			"note": "The web tier answers but the scheduler or queue did not. That is a real verdict and the one this whole rule exists to protect.",
+			"given": {
+				"now": "2026-09-05T15:10:05Z",
+				"signal": { "kind": "heartbeat", "state": "overdue", "last_ping_at": "2026-09-05T13:58:41Z", "interval_minutes": 60, "grace_minutes": 10 },
+				"site": { "critical_status": "up", "critical_checked_at": "2026-09-05T15:10:05Z", "down_since": null, "recovered_at": null },
+				"extranet_reachable": true
+			},
+			"expect": { "action": "deliver", "verdict_status": "missing" }
+		},
+		{
+			"name": "overdue, site is known down",
+			"note": "No probe: the site's critical monitors failed recently and the status is fresh, so there is nothing to find out.",
+			"given": {
+				"now": "2026-09-05T15:10:00Z",
+				"signal": { "kind": "heartbeat", "state": "overdue", "last_ping_at": "2026-09-05T13:58:41Z", "interval_minutes": 60, "grace_minutes": 10 },
+				"site": { "critical_status": "down", "critical_checked_at": "2026-09-05T15:09:00Z", "down_since": "2026-09-05T14:05:02Z", "recovered_at": null },
+				"extranet_reachable": true
+			},
+			"expect": { "action": "suppress" }
+		},
+		{
+			"name": "overdue, site recovered less than one interval plus grace ago",
+			"note": "The queue has not had time to catch up yet. Judging here would page for an outage that is already over.",
+			"given": {
+				"now": "2026-09-05T15:20:00Z",
+				"signal": { "kind": "heartbeat", "state": "overdue", "last_ping_at": "2026-09-05T13:58:41Z", "interval_minutes": 60, "grace_minutes": 10 },
+				"site": { "critical_status": "up", "critical_checked_at": "2026-09-05T15:19:00Z", "down_since": "2026-09-05T14:05:02Z", "recovered_at": "2026-09-05T15:15:00Z" },
+				"extranet_reachable": true
+			},
+			"expect": { "action": "hold" }
+		},
+		{
+			"name": "still overdue more than one interval plus grace after recovery",
+			"note": "The web tier came back and the scheduler did not. A real verdict.",
+			"given": {
+				"now": "2026-09-05T16:26:00Z",
+				"signal": { "kind": "heartbeat", "state": "overdue", "last_ping_at": "2026-09-05T13:58:41Z", "interval_minutes": 60, "grace_minutes": 10 },
+				"site": { "critical_status": "up", "critical_checked_at": "2026-09-05T16:25:00Z", "down_since": "2026-09-05T14:05:02Z", "recovered_at": "2026-09-05T15:15:00Z" },
+				"extranet_reachable": true
+			},
+			"expect": { "action": "deliver", "verdict_status": "missing" }
+		},
+		{
+			"name": "overdue, extranet unreachable",
+			"note": "If the prober cannot reach the hub at all, it treats every one of that tenant's heartbeats as site-down. Undeliverable results plus a site actually down is what triggers the emergency contacts; a missed heartbeat is not.",
+			"given": {
+				"now": "2026-09-05T15:10:00Z",
+				"signal": { "kind": "heartbeat", "state": "overdue", "last_ping_at": "2026-09-05T13:58:41Z", "interval_minutes": 60, "grace_minutes": 10 },
+				"site": { "critical_status": "up", "critical_checked_at": "2026-09-05T15:05:00Z", "down_since": null, "recovered_at": null },
+				"extranet_reachable": false
+			},
+			"expect": { "action": "suppress" }
+		},
+		{
+			"name": "event failed explicitly while the site is up",
+			"note": "An explicit /fail ping needs no probe: the site clearly answered, because it just told us something broke.",
+			"given": {
+				"now": "2026-09-05T15:03:00Z",
+				"signal": { "kind": "event", "state": "explicit_fail", "last_ping_at": "2026-09-05T15:03:00Z", "timeout_minutes": 20 },
+				"site": { "critical_status": "up", "critical_checked_at": "2026-09-05T15:00:00Z", "down_since": null, "recovered_at": null },
+				"extranet_reachable": true
+			},
+			"expect": { "action": "deliver", "verdict_status": "failed" }
+		},
+		{
+			"name": "event started and never finished inside its timeout",
+			"given": {
+				"now": "2026-09-05T15:10:00Z",
+				"signal": { "kind": "event", "state": "start_without_finish", "last_ping_at": "2026-09-05T14:48:00Z", "timeout_minutes": 20 },
+				"site": { "critical_status": "up", "critical_checked_at": "2026-09-05T15:09:00Z", "down_since": null, "recovered_at": null },
+				"extranet_reachable": true
+			},
+			"expect": { "action": "deliver", "verdict_status": "timed_out" }
+		},
+		{
+			"name": "a heartbeat that was missing pings again",
+			"note": "Recovery is delivered even if the site is down, so the hub can close the heartbeat's own state cleanly.",
+			"given": {
+				"now": "2026-09-05T16:00:12Z",
+				"signal": { "kind": "heartbeat", "state": "pinged_again", "last_ping_at": "2026-09-05T16:00:12Z", "interval_minutes": 60, "grace_minutes": 10 },
+				"site": { "critical_status": "up", "critical_checked_at": "2026-09-05T15:59:00Z", "down_since": null, "recovered_at": null },
+				"extranet_reachable": true
+			},
+			"expect": { "action": "deliver", "verdict_status": "recovered" }
+		}
+	]
+}

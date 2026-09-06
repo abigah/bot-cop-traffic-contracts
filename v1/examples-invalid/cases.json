@@ -1,0 +1,203 @@
+{
+	"$comment": "Payloads that must be refused. A schema that accepts everything passes a suite of valid examples, so each of these isolates one rule the schemas exist to enforce.",
+	"cases": [
+		{
+			"name": "results: unknown schema version",
+			"schema": "results",
+			"because": "An unknown version means the sender believes something about this payload that the receiver does not. Refuse; never fall back to the newest known version.",
+			"payload": {
+				"schema": 2,
+				"prober": { "id": "cf-prober-1", "location": "cloudflare" },
+				"results": []
+			}
+		},
+		{
+			"name": "results: check_id is not a ULID",
+			"schema": "results",
+			"because": "The hub's idempotency and the prober's cursor both depend on check_id being sortable. A UUID would break ordered replay silently.",
+			"payload": {
+				"schema": 1,
+				"prober": { "id": "cf-prober-1", "location": "cloudflare" },
+				"results": [
+					{
+						"check_id": "9f8e7d6c-5b4a-3928-1706-f5e4d3c2b1a0",
+						"monitor_id": "20",
+						"checked_at": "2026-09-05T14:00:03Z",
+						"up": true
+					}
+				]
+			}
+		},
+		{
+			"name": "results: timestamp with an offset instead of Z",
+			"schema": "results",
+			"because": "Both implementations claim to handle ISO-8601 and would still disagree. One form only.",
+			"payload": {
+				"schema": 1,
+				"prober": { "id": "cf-prober-1", "location": "cloudflare" },
+				"results": [
+					{
+						"check_id": "01M1RXX0NRM9S346Q3D25VT4F5",
+						"monitor_id": "20",
+						"checked_at": "2026-09-05T16:00:03+02:00",
+						"up": true
+					}
+				]
+			}
+		},
+		{
+			"name": "results: monitor_id as an integer",
+			"schema": "results",
+			"because": "Ids are strings on the wire. An integer here is the PHP/TypeScript mismatch this rule exists to prevent.",
+			"payload": {
+				"schema": 1,
+				"prober": { "id": "cf-prober-1", "location": "cloudflare" },
+				"results": [
+					{
+						"check_id": "01M1RXX0NRM9S346Q3D25VT4F5",
+						"monitor_id": 20,
+						"checked_at": "2026-09-05T14:00:03Z",
+						"up": true
+					}
+				]
+			}
+		},
+		{
+			"name": "manifest: heartbeat without an interval",
+			"schema": "manifest",
+			"because": "A heartbeat with no interval can never be judged late, so it would sit in the manifest doing nothing.",
+			"payload": {
+				"schema": 1,
+				"tenant": "abigah",
+				"generated_at": "2026-09-05T14:00:00Z",
+				"sites": [
+					{
+						"id": "1",
+						"name": "Abigah",
+						"hibernates": false,
+						"ingest_token": "s1te-1ngest-4bigah-Ex4mpl3",
+						"monitors": [],
+						"heartbeats": [
+							{ "id": "100", "kind": "heartbeat", "token": "hb-4bigah-h0urly-d1gest-01" }
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "manifest: event carrying heartbeat fields",
+			"schema": "manifest",
+			"because": "An event is judged by timeout, a heartbeat by interval + grace. Accepting both on one declaration leaves it ambiguous which rule applies.",
+			"payload": {
+				"schema": 1,
+				"tenant": "abigah",
+				"generated_at": "2026-09-05T14:00:00Z",
+				"sites": [
+					{
+						"id": "1",
+						"name": "Abigah",
+						"hibernates": false,
+						"ingest_token": "s1te-1ngest-4bigah-Ex4mpl3",
+						"monitors": [],
+						"heartbeats": [
+							{
+								"id": "101",
+								"kind": "event",
+								"token": "ev-4bigah-depl0yment-01",
+								"timeout_minutes": 20,
+								"interval_minutes": 60,
+								"grace_minutes": 10
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "manifest: monitor interval of zero",
+			"schema": "manifest",
+			"because": "Zero would mean 'always due', which is a way to bill a tenant for a denial of service against their own site.",
+			"payload": {
+				"schema": 1,
+				"tenant": "abigah",
+				"generated_at": "2026-09-05T14:00:00Z",
+				"sites": [
+					{
+						"id": "1",
+						"name": "Abigah",
+						"hibernates": false,
+						"ingest_token": "s1te-1ngest-4bigah-Ex4mpl3",
+						"monitors": [
+							{
+								"id": "10",
+								"url": "https://abigah.example/",
+								"method": "GET",
+								"interval_minutes": 0,
+								"critical": true,
+								"enabled": true
+							}
+						],
+						"heartbeats": []
+					}
+				]
+			}
+		},
+		{
+			"name": "manifest: non-HTTP monitor url",
+			"schema": "manifest",
+			"because": "The prober performs HTTP checks. Anything else is a request to make it fetch something it has no business fetching.",
+			"payload": {
+				"schema": 1,
+				"tenant": "abigah",
+				"generated_at": "2026-09-05T14:00:00Z",
+				"sites": [
+					{
+						"id": "1",
+						"name": "Abigah",
+						"hibernates": false,
+						"ingest_token": "s1te-1ngest-4bigah-Ex4mpl3",
+						"monitors": [
+							{
+								"id": "10",
+								"url": "file:///etc/passwd",
+								"method": "GET",
+								"interval_minutes": 5,
+								"critical": true,
+								"enabled": true
+							}
+						],
+						"heartbeats": []
+					}
+				]
+			}
+		},
+		{
+			"name": "heartbeat-verdicts: unknown status",
+			"schema": "heartbeat-verdicts",
+			"because": "The hub maps each status onto one of its own events. An unmapped status would be dropped on the floor.",
+			"payload": {
+				"schema": 1,
+				"prober": { "id": "cf-prober-1", "location": "cloudflare" },
+				"verdicts": [
+					{
+						"heartbeat_id": "100",
+						"site_id": "1",
+						"status": "flapping",
+						"observed_at": "2026-09-05T15:10:00Z"
+					}
+				]
+			}
+		},
+		{
+			"name": "results: unexpected field",
+			"schema": "results",
+			"because": "additionalProperties is false throughout, so a field one side invented and the other ignores is caught at the boundary rather than becoming an undocumented contract.",
+			"payload": {
+				"schema": 1,
+				"prober": { "id": "cf-prober-1", "location": "cloudflare" },
+				"results": [],
+				"decided_this_site_is_down": true
+			}
+		}
+	]
+}

@@ -1,0 +1,136 @@
+{
+	"$comment": "Cases for the delivery-cadence rule (design §6). A prober implementation exposes a pure function over this input and must produce this output. The rule exists because the extranets hibernate and every delivery wakes one: a healthy tenant costs one wake an hour, a tenant with something down is woken every cycle, which is the cost you want to pay.",
+	"function": "shouldDeliver(state, now) -> { deliver, reason }",
+	"input": {
+		"now": "the moment the cadence is being evaluated",
+		"delivery_cadence_minutes": "the tenant's batch interval; default 60",
+		"last_delivery_at": "when this tenant last had a successful delivery, or null if never",
+		"previous_status": "the monitor's status before the latest result: up, down, or null when this is its first ever result",
+		"latest_status": "the status of the newest buffered result",
+		"buffered_count": "how many undelivered results are held for this tenant"
+	},
+	"reasons": {
+		"down": "the latest result is a failure; deliver now and on every cycle it stays down",
+		"recovery": "the monitor went from down to up; deliver once more immediately",
+		"cadence-elapsed": "everything is up, but the batch interval has passed",
+		"first-delivery": "nothing has ever been delivered for this tenant; deliver so the link is proven",
+		"buffered-while-up": "everything is up and the batch interval has not passed; hold",
+		"nothing-buffered": "there is nothing to send"
+	},
+	"cases": [
+		{
+			"name": "first result of all, monitor up",
+			"note": "A fresh prober delivers once rather than waiting an hour, so an unreachable extranet is discovered at boot instead of 60 minutes later.",
+			"given": {
+				"now": "2026-09-05T14:00:00Z",
+				"delivery_cadence_minutes": 60,
+				"last_delivery_at": null,
+				"previous_status": null,
+				"latest_status": "up",
+				"buffered_count": 1
+			},
+			"expect": { "deliver": true, "reason": "first-delivery" }
+		},
+		{
+			"name": "up, inside the batch interval",
+			"given": {
+				"now": "2026-09-05T14:20:00Z",
+				"delivery_cadence_minutes": 60,
+				"last_delivery_at": "2026-09-05T14:00:00Z",
+				"previous_status": "up",
+				"latest_status": "up",
+				"buffered_count": 4
+			},
+			"expect": { "deliver": false, "reason": "buffered-while-up" }
+		},
+		{
+			"name": "up, batch interval exactly elapsed",
+			"note": "The boundary is inclusive; 60 minutes after the last delivery is due, not one cycle later.",
+			"given": {
+				"now": "2026-09-05T15:00:00Z",
+				"delivery_cadence_minutes": 60,
+				"last_delivery_at": "2026-09-05T14:00:00Z",
+				"previous_status": "up",
+				"latest_status": "up",
+				"buffered_count": 12
+			},
+			"expect": { "deliver": true, "reason": "cadence-elapsed" }
+		},
+		{
+			"name": "up, batch interval elapsed, nothing buffered",
+			"note": "The cadence does not manufacture an empty delivery. Reachability is proven by the manifest reconcile pull instead.",
+			"given": {
+				"now": "2026-09-05T15:30:00Z",
+				"delivery_cadence_minutes": 60,
+				"last_delivery_at": "2026-09-05T14:00:00Z",
+				"previous_status": "up",
+				"latest_status": "up",
+				"buffered_count": 0
+			},
+			"expect": { "deliver": false, "reason": "nothing-buffered" }
+		},
+		{
+			"name": "first failure",
+			"note": "The first failed check wakes the extranet. The extranet's own consecutive-failure threshold decides whether anyone is paged; the prober does not.",
+			"given": {
+				"now": "2026-09-05T14:05:02Z",
+				"delivery_cadence_minutes": 60,
+				"last_delivery_at": "2026-09-05T14:00:00Z",
+				"previous_status": "up",
+				"latest_status": "down",
+				"buffered_count": 2
+			},
+			"expect": { "deliver": true, "reason": "down" }
+		},
+		{
+			"name": "still down on the next cycle",
+			"given": {
+				"now": "2026-09-05T14:06:02Z",
+				"delivery_cadence_minutes": 60,
+				"last_delivery_at": "2026-09-05T14:05:02Z",
+				"previous_status": "down",
+				"latest_status": "down",
+				"buffered_count": 1
+			},
+			"expect": { "deliver": true, "reason": "down" }
+		},
+		{
+			"name": "recovery",
+			"given": {
+				"now": "2026-09-05T14:31:00Z",
+				"delivery_cadence_minutes": 60,
+				"last_delivery_at": "2026-09-05T14:30:00Z",
+				"previous_status": "down",
+				"latest_status": "up",
+				"buffered_count": 1
+			},
+			"expect": { "deliver": true, "reason": "recovery" }
+		},
+		{
+			"name": "settled again after a recovery",
+			"note": "Recovery delivers once. The cycle after it is an ordinary up result and goes back to being batched.",
+			"given": {
+				"now": "2026-09-05T14:36:00Z",
+				"delivery_cadence_minutes": 60,
+				"last_delivery_at": "2026-09-05T14:31:00Z",
+				"previous_status": "up",
+				"latest_status": "up",
+				"buffered_count": 1
+			},
+			"expect": { "deliver": false, "reason": "buffered-while-up" }
+		},
+		{
+			"name": "down under a per-tenant cadence override",
+			"note": "The cadence override changes only the batch interval. Nothing shortens or lengthens the immediate delivery of a failure.",
+			"given": {
+				"now": "2026-09-05T14:05:02Z",
+				"delivery_cadence_minutes": 15,
+				"last_delivery_at": "2026-09-05T14:04:00Z",
+				"previous_status": "up",
+				"latest_status": "down",
+				"buffered_count": 1
+			},
+			"expect": { "deliver": true, "reason": "down" }
+		}
+	]
+}
