@@ -1,0 +1,38 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Every schema compiles, every example validates, every must-reject case is
+      # refused, and every HMAC vector reproduces its stated signature.
+      - run: npm test
+
+      # The vectors are generated from the example payloads, so an edited example
+      # with stale signatures would otherwise ship looking correct.
+      - name: HMAC vectors match the examples they are generated from
+        run: |
+          python3 tools/generate-hmac-vectors.py > /dev/null
+
+          if ! git diff --quiet v1/hmac/vectors.json; then
+            echo "::error::v1/hmac/vectors.json is stale. Run 'python3 tools/generate-hmac-vectors.py' and commit the result."
+            git --no-pager diff --stat v1/hmac/vectors.json
+            exit 1
+          fi
+
+          echo "Vectors reproduce exactly."

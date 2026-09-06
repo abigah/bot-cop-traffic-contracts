@@ -68,12 +68,22 @@ get subtly wrong in code:
 Each case names a pure function, its input and its expected output. An
 implementation binds its own function to the cases; nothing here is executable.
 
+## Status
+
+**In use, and effectively frozen.** The prober is deployed against v1 and the
+hub is being built against it. Additive changes that no conformant
+implementation could mis-read are fine; anything else is a `v2/` beside `v1/`.
+
 ## Checking the kit
 
 ```sh
 npm install
 npm test
 ```
+
+CI runs this on every push, and additionally regenerates the HMAC vectors to
+confirm they still match the examples they are derived from — an edited example
+with stale signatures would otherwise ship looking perfectly correct.
 
 This validates the kit against itself — every schema compiles, every example
 validates, every must-reject case is refused, and every HMAC vector reproduces
