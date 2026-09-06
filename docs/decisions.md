@@ -51,6 +51,16 @@ are loaded by a PHP validator, a TypeScript validator and a CI script that just
 wants to read one file. The duplication is a few lines and is checked by
 `npm test`.
 
+**A site status goes stale after two minutes.** The site rule probes the site's
+critical monitors before judging a heartbeat, but only when what it knows is too
+old to be evidence. The design says it probes when the last result "is stale or
+was up", which read literally would probe forever — the probe's own result is
+also "up". `site_status_fresh_seconds` in the fixture is what breaks that loop:
+a status established within it is trusted, anything older is re-probed. Two
+minutes is short enough that a site which fell over between the last check and
+now is caught, and long enough that a sweep does not re-probe a site it checked
+seconds ago.
+
 ## Left open
 
 **Ping tokens are unversioned.** A rotated `ingest_token` or heartbeat `token`
